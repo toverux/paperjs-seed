@@ -1,0 +1,28 @@
+@use '../variables' as vars;
+
+.app {
+    position: relative;
+    height: 100vh;
+    background-color: vars.$color-background;
+
+    > canvas {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+    }
+
+    > .toolbar {
+        z-index: 1;
+        position: absolute;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    > .toolboxes-container {
+        z-index: 1;
+        position: absolute;
+        right: 2rem;
+        bottom: 2rem;
+    }
+}
