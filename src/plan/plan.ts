@@ -18,6 +18,8 @@ export class Plan {
 
     public removeLast(): void
     {
-        this.walls.removeSegment(this.walls.segments.length - 1);
+        if (this.walls.segments.length !== 0) {
+            this.walls.removeSegment(this.walls.segments.length - 1);
+        }
     }
 }
