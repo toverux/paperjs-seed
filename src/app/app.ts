@@ -4,6 +4,7 @@ import { Toolbar } from '../toolbar';
 import { ToolboxesContainer } from '../toolbox';
 import { ColorToolbox, SaveToolbox } from '../toolboxes';
 import { FillTool } from '../tools';
+import { WallBuilderTool } from '../tools/wall-builder-tool';
 import './app.scss';
 
 export class App {
@@ -25,10 +26,12 @@ export class App {
 
         toolbar.addTool(new FillTool(colorToolbox));
 
-        this.initializePlan();
+        const plan = this.initializePlan();
+
+        toolbar.addTool(new WallBuilderTool(plan));
     }
 
-    private initializePlan(): void {
+    private initializePlan(): Plan {
         const canvas = document.createElement('canvas');
         this.element.appendChild(canvas);
 
@@ -36,6 +39,6 @@ export class App {
 
         const plan = new Plan();
 
-        plan.initialize();
+        return plan.initialize();
     }
 }

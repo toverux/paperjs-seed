@@ -1,12 +1,23 @@
 import * as paper from 'paper';
 
 export class Plan {
-    public initialize(): void {
+
+    walls: paper.Path = new paper.Path();
+
+    public initialize(): Plan {
         paper.view.center = new paper.Point(0, 0);
+        this.walls.strokeColor = new paper.Color('#e9e9ff');
+        this.walls.selected = true;
+        return this;
+    }
 
-        const decagon = new paper.Path.RegularPolygon(new paper.Point(0, 0), 10, 200);
+    public addSegment(x: paper.Point): void
+    {
+        this.walls.add(x);
+    }
 
-        decagon.fillColor = new paper.Color('#e9e9ff');
-        decagon.selected = true;
+    public removeLast(): void
+    {
+        this.walls.removeSegment(this.walls.segments.length - 1);
     }
 }
