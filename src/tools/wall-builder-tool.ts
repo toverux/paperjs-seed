@@ -1,217 +1,58 @@
-import { icon } from '@fortawesome/fontawesome-svg-core';
-import { faDrawPolygon } from '@fortawesome/free-solid-svg-icons';
-import { Plan } from '../plan';
-import { PaperTool } from '../toolbar';
+import { icon } from "@fortawesome/fontawesome-svg-core";
+import { faDrawPolygon } from "@fortawesome/free-solid-svg-icons";
+import { Color, Group, Path, Point } from "paper";
+import { Plan } from "../plan";
+import { PaperTool } from "../toolbar";
 
 export class WallBuilderTool extends PaperTool {
-    private dashItem: any;
+  private vectorStart: InstanceType<typeof Point> = new Point(0, 0);
+  private vector: InstanceType<typeof Point> = new Point(0, 0);
+  // private vectorPrevious: InstanceType<typeof Point> | null = null;
+  private vectorItem: InstanceType<typeof Group> | null = null;
+  public readonly name = "Construire des murs";
 
-    private static values = {
-        fixLength: false,
-        fixAngle: false,
-        showCircle: false,
-        showAngleLength: true,
-        showCoordinates: false
-    };
+  public readonly icon = icon(faDrawPolygon);
 
-    private vectorStart?: paper.Point;
-    private vector?: paper.Point;
-    private vectorPrevious: any;
-    private vectorItem: any;
-    private items: any;
-    private dashedItems: any;
+  public constructor(private readonly plan: Plan) {
+    super();
 
-    public readonly name = 'Construire des murs';
+    this.paperTool.onMouseDown = this.onMouseDown.bind(this);
+    this.paperTool.onMouseDrag = this.onMouseDrag.bind(this);
+    this.paperTool.onMouseUp = this.onMouseUp.bind(this);
+    this.paperTool.onKeyDown = this.onKeyDown.bind(this);
+  }
 
-    public readonly icon = icon(faDrawPolygon);
+  private processVector(event: paper.ToolEvent) {
+    this.vector = event.point.subtract(this.vectorStart);
+    this.drawVector();
+  }
+  private drawVector() {
+    if (this.vectorItem !== null) this.vectorItem.remove();
+    let end = this.vectorStart.add(this.vector);
+    this.vectorItem = new Group([new Path([this.vectorStart, end])]);
+    this.vectorItem.strokeWidth = 0.75;
+    this.vectorItem.strokeColor = new Color("#e4141b");
+  }
 
-    public constructor(private readonly plan: Plan) {
-        super();
+  public onMouseDown(event: paper.ToolEvent): void {
+    let end = this.vectorStart.add(this.vector);
+    this.vectorStart = end;
+    this.processVector(event);
+  }
 
-        this.paperTool.onMouseDown = this.onMouseDown.bind(this);
-        this.paperTool.onKeyDown = this.onKeyDown.bind(this);
+  public onMouseDrag(event: paper.ToolEvent) {
+    this.processVector(event);
+  }
+
+  public onMouseUp(event: paper.ToolEvent) {
+    this.processVector(event);
+    if (this.vectorItem !== null) this.vectorItem.remove();
+    this.plan.addSegment(event.point);
+  }
+
+  public onKeyDown(event: any): void {
+    if (event.modifiers.control && event.key.charCodeAt(0) === 122) {
+      this.plan.removeLast();
     }
-
-    private processVector(event: paper.ToolEvent, drag: boolean) {
-        if (this.vectorStart !== undefined) {
-            this.vector = event.point.subtract(this.vectorStart);
-        }
-        if (this.vectorPrevious) {
-            if (WallBuilderTool.values.fixLength && WallBuilderTool.values.fixAngle) {
-                this.vector = this.vectorPrevious;
-            } else if (WallBuilderTool.values.fixLength) {
-                if (this.vector !== undefined) {
-                    this.vector.length = this.vectorPrevious.length;
-                }
-            } else if (WallBuilderTool.values.fixAngle) {
-                this.vector = this.vector.project(this.vectorPrevious);
-            }
-        }
-        drawVector(drag);
-    }
-
-    private drawAngle(center, vector, label) {
-        var radius = 25, threshold = 10;
-        if (vector.length < radius + threshold || Math.abs(vector.angle) < 15)
-            return;
-        var from = new Point(radius, 0);
-        var through = from.rotate(vector.angle / 2);
-        var to = from.rotate(vector.angle);
-        var end = center + to;
-        dashedItems.push(new Path.Line(center,
-                center + new Point(radius + threshold, 0)));
-        dashedItems.push(new Path.Arc(center + from, center + through, end));
-        var arrowVector = to.normalize(7.5).rotate(vector.angle < 0 ? -90 : 90);
-        dashedItems.push(new Path([
-                end + arrowVector.rotate(135),
-                end,
-                end + arrowVector.rotate(-135)
-        ]));
-        if (label) {
-            // Angle Label
-            var text = new PointText(center
-                    + through.normalize(radius + 10) + new Point(0, 3));
-            text.content = Math.floor(vector.angle * 100) / 100 + '°';
-            text.fillColor = 'black';
-            items.push(text);
-        }
-    }
-
-    private drawVector(drag) {
-        if (items) {
-            for (var i = 0, l = items.length; i < l; i++) {
-                items[i].remove();
-            }
-        }
-        if (vectorItem)
-            vectorItem.remove();
-        items = [];
-        var arrowVector = vector.normalize(10);
-        var end = vectorStart + vector;
-        vectorItem = new Group([
-            new Path([vectorStart, end]),
-            new Path([
-                end + arrowVector.rotate(135),
-                end,
-                end + arrowVector.rotate(-135)
-            ])
-        ]);
-        vectorItem.strokeWidth = 0.75;
-        vectorItem.strokeColor = '#e4141b';
-        // Display:
-        dashedItems = [];
-        // Draw Circle
-        if (values.showCircle) {
-            dashedItems.push(new Path.Circle({
-                center: vectorStart,
-                radius: vector.length
-            }));
-        }
-        // Draw Labels
-        if (values.showAngleLength) {
-            drawAngle(vectorStart, vector, !drag);
-            if (!drag)
-                drawLength(vectorStart, end, vector.angle < 0 ? -1 : 1, true);
-        }
-        var quadrant = vector.quadrant;
-        if (values.showCoordinates && !drag) {
-            drawLength(vectorStart, vectorStart + [vector.x, 0],
-                    [1, 3].indexOf(quadrant) != -1 ? -1 : 1, true, vector.x, 'x: ');
-            drawLength(vectorStart, vectorStart + [0, vector.y], 
-                    [1, 3].indexOf(quadrant) != -1 ? 1 : -1, true, vector.y, 'y: ');
-        }
-        for (var i = 0, l = dashedItems.length; i < l; i++) {
-            var item = dashedItems[i];
-            item.strokeColor = 'black';
-            item.dashArray = [1, 2];
-            items.push(item);
-        }
-        // Update palette
-        values.x = vector.x;
-        values.y = vector.y;
-        values.length = vector.length;
-        values.angle = vector.angle;
-    }
-    
-    private drawLength(from, to, sign, label, value, prefix) {
-        var lengthSize = 5;
-        if ((to - from).length < lengthSize * 4)
-            return;
-        var vector = to - from;
-        var awayVector = vector.normalize(lengthSize).rotate(90 * sign);
-        var upVector = vector.normalize(lengthSize).rotate(45 * sign);
-        var downVector = upVector.rotate(-90 * sign);
-        var lengthVector = vector.normalize(
-                vector.length / 2 - lengthSize * Math.sqrt(2));
-        var line = new Path();
-        line.add(from + awayVector);
-        line.lineBy(upVector);
-        line.lineBy(lengthVector);
-        line.lineBy(upVector);
-        var middle = line.lastSegment.point;
-        line.lineBy(downVector);
-        line.lineBy(lengthVector);
-        line.lineBy(downVector);
-        dashedItems.push(line);
-        if (label) {
-            // Length Label
-            var textAngle = Math.abs(vector.angle) > 90
-                    ? textAngle = 180 + vector.angle : vector.angle;
-            // Label needs to move away by different amounts based on the
-            // vector's quadrant:
-            var away = (sign >= 0 ? [1, 4] : [2, 3]).indexOf(vector.quadrant) != -1
-                    ? 8 : 0;
-            value = value || vector.length;
-            var text = new PointText({
-                point: middle + awayVector.normalize(away + lengthSize),
-                content: (prefix || '') + Math.floor(value * 1000) / 1000,
-                fillColor: 'black',
-                justification: 'center'
-            });
-            text.rotate(textAngle);
-            items.push(text);
-        }
-    }
-
-    public onMouseDown(event: paper.ToolEvent): void {
-        const end = this.vectorStart + this.vector;
-        let create = false;
-        if (event.modifiers.shift && this.vectorItem) {
-            this.vectorStart = end;
-            create = true;
-        } else if (this.vector && (event.modifiers.option
-                || end && end.getDistance(event.point) < 10)) {
-            create = false;
-        } else {
-            this.vectorStart = event.point;
-        }
-        if (create) {
-            this.dashItem = this.vectorItem;
-            this.vectorItem = null;
-        }
-        this.processVector(event, true);
-        this.plan.addSegment(event.downPoint);
-    }
-
-    public onMouseDrag(event: paper.ToolEvent) {
-        if (!event.modifiers.shift && values.fixLength && values.fixAngle)
-            vectorStart = event.point;
-        processVector(event, event.modifiers.shift);
-    }
-
-    public onMouseUp(event: paper.ToolEvent) {
-        processVector(event, false);
-        if (dashItem) {
-            dashItem.dashArray = [1, 2];
-            dashItem = null;
-        }
-        vectorPrevious = vector;
-    }
-
-    public onKeyDown(event: any): void
-    {
-        if (event.modifiers.control && event.key.charCodeAt(0) === 122) {
-            this.plan.removeLast();
-        }
-    }
+  }
 }
