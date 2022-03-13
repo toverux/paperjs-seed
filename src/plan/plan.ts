@@ -4,7 +4,6 @@ export class Plan {
   private walls: paper.Path = new paper.Path();
 
   public initialize(): Plan {
-    paper.view.center = new paper.Point(0, 0);
     this.walls.strokeColor = new paper.Color("#e9e9ff");
     this.walls.selected = true;
     return this;
