@@ -18,6 +18,9 @@ export class Plan {
     if (this.walls.segments.length !== 0) {
       this.walls.removeSegment(this.walls.segments.length - 1);
     }
+    if (this.walls.segments.length === 1) {
+      this.walls.removeSegment(0);
+    }
   }
 
   public isEmpty(): boolean {
