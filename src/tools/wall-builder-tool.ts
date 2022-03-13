@@ -24,19 +24,19 @@ export class WallBuilderTool extends PaperTool {
 
   private processVector(event: paper.ToolEvent) {
     this.vector = event.point.subtract(this.vectorStart);
-    this.drawVector();
-  }
-  private drawVector() {
-    if (this.vectorItem !== null) this.vectorItem.remove();
     let end = this.vectorStart.add(this.vector);
-    this.vectorItem = new Group([new Path([this.vectorStart, end])]);
+    this.drawLine(this.vectorStart, end);
+  }
+
+  private drawLine(start: paper.Point, end: paper.Point) {
+    if (this.vectorItem !== null) this.vectorItem.remove();
+    this.vectorItem = new Group([new Path([start, end])]);
     this.vectorItem.strokeWidth = 0.75;
     this.vectorItem.strokeColor = new Color("#e4141b");
   }
 
   public onMouseDown(event: paper.ToolEvent): void {
-    let end = this.vectorStart.add(this.vector);
-    this.vectorStart = end;
+    this.vectorStart = this.vectorStart.add(this.vector);
     this.processVector(event);
   }
 
@@ -46,8 +46,11 @@ export class WallBuilderTool extends PaperTool {
 
   public onMouseUp(event: paper.ToolEvent) {
     this.processVector(event);
-    if (this.vectorItem !== null) this.vectorItem.remove();
+    if (this.plan.isEmpty()) {
+      this.plan.addSegment(this.vectorStart);
+    }
     this.plan.addSegment(event.point);
+    if (this.vectorItem !== null) this.vectorItem.remove();
   }
 
   public onKeyDown(event: any): void {
