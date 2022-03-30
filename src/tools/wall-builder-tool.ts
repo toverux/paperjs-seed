@@ -5,10 +5,9 @@ import { Plan } from "../plan";
 import { PaperTool } from "../toolbar";
 
 export class WallBuilderTool extends PaperTool {
-  private vectorStart: InstanceType<typeof Point> = new Point(0, 0);
-  private vector: InstanceType<typeof Point> = new Point(0, 0);
-  // private vectorPrevious: InstanceType<typeof Point> | null = null;
-  private vectorItem: InstanceType<typeof Group> | null = null;
+  private vectorStart: InstanceType<typeof Point> | null = null;
+  private vectorPrevious: InstanceType<typeof Point> | null = null;
+  private dragVector: InstanceType<typeof Group> | null = null;
   public readonly name = "Construire des murs";
 
   public readonly icon = icon(faDrawPolygon);
@@ -22,40 +21,47 @@ export class WallBuilderTool extends PaperTool {
     this.paperTool.onKeyDown = this.onKeyDown.bind(this);
   }
 
-  private processVector(event: paper.ToolEvent) {
-    this.vector = event.point.subtract(this.vectorStart);
-    let end = this.vectorStart.add(this.vector);
-    this.drawLine(this.vectorStart, end);
-  }
-
   private drawLine(start: paper.Point, end: paper.Point) {
-    if (this.vectorItem !== null) this.vectorItem.remove();
-    this.vectorItem = new Group([new Path([start, end])]);
-    this.vectorItem.strokeWidth = 0.75;
-    this.vectorItem.strokeColor = new Color("#e4141b");
+    if (this.dragVector !== null) this.dragVector.remove();
+    this.dragVector = new Group([new Path([start, end])]);
+    this.dragVector.strokeWidth = 0.75;
+    this.dragVector.strokeColor = new Color("#e4141b");
   }
 
   public onMouseDown(event: paper.ToolEvent): void {
-    this.vectorStart = this.vectorStart.add(this.vector);
-    this.processVector(event);
+    if (this.vectorStart === null) {
+      this.vectorStart = event.point;
+    }
+    this.drawLine(this.vectorStart!, event.point);
   }
 
   public onMouseDrag(event: paper.ToolEvent) {
-    this.processVector(event);
+    this.drawLine(this.vectorStart!, event.point);
   }
 
   public onMouseUp(event: paper.ToolEvent) {
-    this.processVector(event);
     if (this.plan.isEmpty()) {
-      this.plan.addSegment(this.vectorStart);
+      this.plan.addSegment(this.vectorStart!);
     }
     this.plan.addSegment(event.point);
-    if (this.vectorItem !== null) this.vectorItem.remove();
+    // Memorize previous point
+    this.vectorPrevious = this.vectorStart;
+    this.vectorStart = event.point;
+    if (this.dragVector !== null) this.dragVector.remove();
   }
 
   public onKeyDown(event: any): void {
     if (event.modifiers.control && event.key.charCodeAt(0) === 122) {
       this.plan.removeLast();
+      if (this.plan.isEmpty()) {
+        this.vectorStart = null;
+        this.vectorPrevious = null;
+      } else {
+        this.vectorStart = this.vectorPrevious;
+        let walls = this.plan.getWalls();
+        this.vectorPrevious =
+          walls.segments.at(walls.segments.length - 2)?.point ?? null;
+      }
     }
   }
 }

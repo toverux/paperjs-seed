@@ -1,4 +1,5 @@
 import * as paper from "paper";
+import { Path } from "paper/dist/paper-core";
 
 export class Plan {
   private walls: paper.Path = new paper.Path();
@@ -24,5 +25,9 @@ export class Plan {
 
   public isEmpty(): boolean {
     return this.walls.isEmpty();
+  }
+
+  public getWalls(): InstanceType<typeof Path> {
+    return this.walls;
   }
 }
