@@ -5,8 +5,9 @@ import { Plan } from "../plan";
 import { PaperTool } from "../toolbar";
 
 export class WallBuilderTool extends PaperTool {
-  private vectorStart: InstanceType<typeof Point> | null = null;
-  private vectorPrevious: InstanceType<typeof Point> | null = null;
+  private startVector: InstanceType<typeof Point> | null = new Point(0, 0);
+  private currentVector: InstanceType<typeof Point> | null = null;
+  private previousVector: InstanceType<typeof Point> | null = null;
   private dragVector: InstanceType<typeof Group> | null = null;
   public readonly name = "Construire des murs";
 
@@ -29,24 +30,61 @@ export class WallBuilderTool extends PaperTool {
   }
 
   public onMouseDown(event: paper.ToolEvent): void {
-    if (this.vectorStart === null) {
-      this.vectorStart = event.point;
+    if (this.startVector === null) {
+      this.startVector = event.point;
     }
-    this.drawLine(this.vectorStart!, event.point);
+    if (this.startVector!.getDistance(event.point) > 10) {
+      this.drawLine(this.startVector!, event.point);
+    }
   }
 
   public onMouseDrag(event: paper.ToolEvent) {
-    this.drawLine(this.vectorStart!, event.point);
+    if (this.startVector!.getDistance(event.point) > 10) {
+      this.currentVector = this.restrictVectorAngle(
+        event.point.subtract(this.startVector!),
+        4
+      ).add(this.startVector!);
+      this.drawLine(this.startVector!, this.currentVector);
+    }
   }
 
-  public onMouseUp(event: paper.ToolEvent) {
-    if (this.plan.isEmpty()) {
-      this.plan.addSegment(this.vectorStart!);
+  private restrictVectorAngle(
+    vector: paper.Point,
+    restrictFactor: number
+  ): paper.Point {
+    let absoluteAngle = vector.angle;
+    if (absoluteAngle < 0) {
+      absoluteAngle += 360;
     }
-    this.plan.addSegment(event.point);
+    vector.angle = this.restrictAngle(absoluteAngle, restrictFactor);
+    return vector;
+  }
+
+  /**
+   * @param angle between 0 and 360
+   * @param restrictFactor minimum 0
+   * @returns
+   */
+  private restrictAngle(angle: number, restrictFactor: number): number {
+    console.log(angle);
+
+    let degreeThreshold = 360 / restrictFactor; //90
+    let div = Math.floor((angle + degreeThreshold / 2) / degreeThreshold);
+    let result = degreeThreshold * div;
+
+    console.log(result);
+    return result;
+    // if (angle >= 135 && angle < )
+  }
+
+  public onMouseUp(_event: paper.ToolEvent) {
+    if (this.plan.isEmpty()) {
+      this.plan.addSegment(this.startVector!);
+    }
+    this.plan.addSegment(this.currentVector!);
     // Memorize previous point
-    this.vectorPrevious = this.vectorStart;
-    this.vectorStart = event.point;
+    this.previousVector = this.startVector;
+    this.startVector = this.currentVector;
     if (this.dragVector !== null) this.dragVector.remove();
   }
 
@@ -54,12 +92,12 @@ export class WallBuilderTool extends PaperTool {
     if (event.modifiers.control && event.key.charCodeAt(0) === 122) {
       this.plan.removeLast();
       if (this.plan.isEmpty()) {
-        this.vectorStart = null;
-        this.vectorPrevious = null;
+        this.startVector = null;
+        this.previousVector = null;
       } else {
-        this.vectorStart = this.vectorPrevious;
+        this.startVector = this.previousVector;
         let walls = this.plan.getWalls();
-        this.vectorPrevious =
+        this.previousVector =
           walls.segments.at(walls.segments.length - 2)?.point ?? null;
       }
     }
