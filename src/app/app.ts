@@ -28,7 +28,7 @@ export class App {
 
     const plan = this.initializePlan();
 
-    toolbar.addTool(new ExternalWallsBuilderTool(plan));
+    toolbar.addTool(new ExternalWallsBuilderTool(plan, 4));
   }
 
   private initializePlan(): Plan {

@@ -5,7 +5,8 @@ import { Plan } from "../plan";
 import { PaperTool } from "../toolbar";
 
 export class ExternalWallsBuilderTool extends PaperTool {
-  private startVector: InstanceType<typeof Point> | null = new Point(0, 0);
+  private static minVectorLength = 10;
+  private startVector: InstanceType<typeof Point> | null = null;
   private currentVector: InstanceType<typeof Point> | null = null;
   private previousVector: InstanceType<typeof Point> | null = null;
   private dragVector: InstanceType<typeof Group> | null = null;
@@ -13,9 +14,8 @@ export class ExternalWallsBuilderTool extends PaperTool {
 
   public readonly icon = icon(faDrawPolygon);
 
-  public constructor(private readonly plan: Plan) {
+  public constructor(private readonly plan: Plan, private readonly wallsAngleRestrictFactor: number) {
     super();
-
     this.paperTool.onMouseDown = this.onMouseDown.bind(this);
     this.paperTool.onMouseDrag = this.onMouseDrag.bind(this);
     this.paperTool.onMouseUp = this.onMouseUp.bind(this);
@@ -30,19 +30,21 @@ export class ExternalWallsBuilderTool extends PaperTool {
   }
 
   public onMouseDown(event: paper.ToolEvent): void {
-    if (this.startVector === null) {
-      this.startVector = event.point;
-    }
-    if (this.startVector!.getDistance(event.point) > 10) {
-      this.drawLine(this.startVector!, event.point);
-    }
+    this.processCursorPosition(event.point);
   }
 
-  public onMouseDrag(event: paper.ToolEvent) {
-    if (this.startVector!.getDistance(event.point) > 10) {
+  public onMouseDrag(event: paper.ToolEvent): void {
+    this.processCursorPosition(event.point);
+  }
+
+  private processCursorPosition(point: InstanceType<typeof Point>) {
+    if (this.startVector === null) {
+      this.startVector = point;
+    }
+    if (this.startVector!.getDistance(point) > ExternalWallsBuilderTool.minVectorLength) {
       this.currentVector = this.restrictVectorAngle(
-        event.point.subtract(this.startVector!),
-        4
+        point.subtract(this.startVector!),
+        this.wallsAngleRestrictFactor
       ).add(this.startVector!);
       this.drawLine(this.startVector!, this.currentVector);
     }
@@ -74,7 +76,7 @@ export class ExternalWallsBuilderTool extends PaperTool {
   }
 
   public onMouseUp(_event: paper.ToolEvent) {
-    if (this.plan.isEmpty()) {
+    if (this.plan.areExternalWallsEmpty()) {
       this.plan.addExternalWallPoint(this.startVector!);
     }
     this.plan.addExternalWallPoint(this.currentVector!);
@@ -86,8 +88,8 @@ export class ExternalWallsBuilderTool extends PaperTool {
 
   public onKeyDown(event: any): void {
     if (event.modifiers.control && event.key.charCodeAt(0) === 122) {
-      this.plan.removeLast();
-      if (this.plan.isEmpty()) {
+      this.plan.removeLastExternalWallPoint();
+      if (this.plan.areExternalWallsEmpty()) {
         this.startVector = null;
         this.previousVector = null;
       } else {
