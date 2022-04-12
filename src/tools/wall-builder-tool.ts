@@ -4,7 +4,7 @@ import { Color, Group, Path, Point } from "paper";
 import { Plan } from "../plan";
 import { PaperTool } from "../toolbar";
 
-export class WallBuilderTool extends PaperTool {
+export class ExternalWallsBuilderTool extends PaperTool {
   private startVector: InstanceType<typeof Point> | null = new Point(0, 0);
   private currentVector: InstanceType<typeof Point> | null = null;
   private previousVector: InstanceType<typeof Point> | null = null;
@@ -66,22 +66,18 @@ export class WallBuilderTool extends PaperTool {
    * @returns
    */
   private restrictAngle(angle: number, restrictFactor: number): number {
-    console.log(angle);
-
-    let degreeThreshold = 360 / restrictFactor; //90
-    let div = Math.floor((angle + degreeThreshold / 2) / degreeThreshold);
-    let result = degreeThreshold * div;
-
-    console.log(result);
-    return result;
-    // if (angle >= 135 && angle < )
+    let degreeThreshold = 360 / restrictFactor;
+    return (
+      degreeThreshold *
+      Math.floor((angle + degreeThreshold / 2) / degreeThreshold)
+    );
   }
 
   public onMouseUp(_event: paper.ToolEvent) {
     if (this.plan.isEmpty()) {
-      this.plan.addSegment(this.startVector!);
+      this.plan.addExternalWallPoint(this.startVector!);
     }
-    this.plan.addSegment(this.currentVector!);
+    this.plan.addExternalWallPoint(this.currentVector!);
     // Memorize previous point
     this.previousVector = this.startVector;
     this.startVector = this.currentVector;
@@ -96,7 +92,7 @@ export class WallBuilderTool extends PaperTool {
         this.previousVector = null;
       } else {
         this.startVector = this.previousVector;
-        let walls = this.plan.getWalls();
+        let walls = this.plan.getExternalWalls();
         this.previousVector =
           walls.segments.at(walls.segments.length - 2)?.point ?? null;
       }
