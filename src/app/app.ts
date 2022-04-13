@@ -1,5 +1,7 @@
 import * as paper from "paper";
 import { Plan } from "../plan";
+import { PaperPlan } from "../plan/paper-plan";
+import { PaperWalls } from "../plan/walls/paper-walls";
 import { Toolbar } from "../toolbar";
 import { ToolboxesContainer } from "../toolbox";
 import { ColorToolbox, SaveToolbox } from "../toolboxes";
@@ -26,21 +28,19 @@ export class App {
 
     toolbar.addTool(new FillTool(colorToolbox));
 
-    const plan = this.initializePlan();
-
-    toolbar.addTool(new ExternalWallsBuilderTool(plan, 4));
-  }
-
-  private initializePlan(): Plan {
     const canvas = document.createElement("canvas");
     this.element.appendChild(canvas);
 
     paper.setup(canvas);
 
-    const plan = new Plan();
-
     paper.view.center = new paper.Point(0, 0);
 
-    return plan.initialize();
+    const plan = this.initializePlan();
+
+    toolbar.addTool(new ExternalWallsBuilderTool(plan.externalWalls, 4));
+  }
+
+  private initializePlan(): Plan {
+    return new PaperPlan(new PaperWalls(), new PaperWalls());
   }
 }

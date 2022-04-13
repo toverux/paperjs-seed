@@ -1,7 +1,8 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
 import { faDrawPolygon } from "@fortawesome/free-solid-svg-icons";
 import { Color, Group, Path, Point } from "paper";
-import { Plan } from "../plan";
+import { pointToPaperPoint } from "../plan/paper-plan";
+import { Walls } from "../plan/walls/walls";
 import { PaperTool } from "../toolbar";
 
 export class ExternalWallsBuilderTool extends PaperTool {
@@ -14,7 +15,10 @@ export class ExternalWallsBuilderTool extends PaperTool {
 
   public readonly icon = icon(faDrawPolygon);
 
-  public constructor(private readonly plan: Plan, private readonly wallsAngleRestrictFactor: number) {
+  public constructor(
+    private readonly walls: Walls,
+    private readonly wallsAngleRestrictFactor: number
+  ) {
     super();
     this.paperTool.onMouseDown = this.onMouseDown.bind(this);
     this.paperTool.onMouseDrag = this.onMouseDrag.bind(this);
@@ -41,7 +45,10 @@ export class ExternalWallsBuilderTool extends PaperTool {
     if (this.startVector === null) {
       this.startVector = point;
     }
-    if (this.startVector!.getDistance(point) > ExternalWallsBuilderTool.minVectorLength) {
+    if (
+      this.startVector!.getDistance(point) >
+      ExternalWallsBuilderTool.minVectorLength
+    ) {
       this.currentVector = this.restrictVectorAngle(
         point.subtract(this.startVector!),
         this.wallsAngleRestrictFactor
@@ -76,10 +83,10 @@ export class ExternalWallsBuilderTool extends PaperTool {
   }
 
   public onMouseUp(_event: paper.ToolEvent) {
-    if (this.plan.areExternalWallsEmpty()) {
-      this.plan.addExternalWallPoint(this.startVector!);
+    if (this.walls.isEmpty()) {
+      this.walls.addCorner(this.startVector!);
     }
-    this.plan.addExternalWallPoint(this.currentVector!);
+    this.walls.addCorner(this.currentVector!);
     // Memorize previous point
     this.previousVector = this.startVector;
     this.startVector = this.currentVector;
@@ -88,15 +95,17 @@ export class ExternalWallsBuilderTool extends PaperTool {
 
   public onKeyDown(event: any): void {
     if (event.modifiers.control && event.key.charCodeAt(0) === 122) {
-      this.plan.removeLastExternalWallPoint();
-      if (this.plan.areExternalWallsEmpty()) {
+      this.walls.removeLastCorner();
+      if (this.walls.isEmpty()) {
         this.startVector = null;
         this.previousVector = null;
       } else {
         this.startVector = this.previousVector;
-        let walls = this.plan.getExternalWalls();
-        this.previousVector =
-          walls.segments.at(walls.segments.length - 2)?.point ?? null;
+        let walls = this.walls.getCorners();
+        let previousPoint = walls.at(walls.length - 2) ?? null;
+        this.previousVector = previousPoint
+          ? pointToPaperPoint(previousPoint)
+          : null;
       }
     }
   }
