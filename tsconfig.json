@@ -8,12 +8,14 @@
     "noImplicitAny": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
-     "noUnusedLocals": true,
+    "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
   }
 }

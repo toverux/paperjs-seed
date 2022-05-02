@@ -1,16 +1,19 @@
 import { icon } from "@fortawesome/fontawesome-svg-core";
-import { faDrawPolygon } from "@fortawesome/free-solid-svg-icons";
-import { Color, Group, Path, Point } from "paper";
-import { pointToPaperPoint } from "../plan/paper-plan";
+import { paperPointToPoint, pointToPaperPoint } from "../plan/paper-plan";
 import { Walls } from "../plan/walls/walls";
 import { PaperTool } from "../toolbar";
+import * as paper from "paper";
+import { isEqual } from "lodash";
+import { faDrawPolygon } from "@fortawesome/free-solid-svg-icons";
 
 export class ExternalWallsBuilderTool extends PaperTool {
+  private static dragDistance = 20;
   private static minVectorLength = 10;
-  private startVector: InstanceType<typeof Point> | null = null;
-  private currentVector: InstanceType<typeof Point> | null = null;
-  private previousVector: InstanceType<typeof Point> | null = null;
-  private dragVector: InstanceType<typeof Group> | null = null;
+  private startVector: paper.Point | null = null;
+  private currentVector: paper.Point | null = null;
+  private previousVector: paper.Point | null = null;
+  private dragLine: paper.Path | null = null;
+  private dashedLine: paper.Path | null = null;
   public readonly name = "Construire des murs";
 
   public readonly icon = icon(faDrawPolygon);
@@ -26,11 +29,23 @@ export class ExternalWallsBuilderTool extends PaperTool {
     this.paperTool.onKeyDown = this.onKeyDown.bind(this);
   }
 
-  private drawLine(start: paper.Point, end: paper.Point) {
-    if (this.dragVector !== null) this.dragVector.remove();
-    this.dragVector = new Group([new Path([start, end])]);
-    this.dragVector.strokeWidth = 0.75;
-    this.dragVector.strokeColor = new Color("#e4141b");
+  private drawLine(start: paper.Point, end: paper.Point): void {
+    this.dragLine?.remove();
+    this.dragLine = new paper.Path([start, end]);
+    this.dragLine.strokeWidth = 0.75;
+    this.dragLine.strokeColor = new paper.Color("#e4141b");
+  }
+
+  private drawDashedLine(start: paper.Point, end: paper.Point): void {
+    this.dashedLine?.remove();
+    this.dashedLine = new paper.Path([start, end]);
+    this.dashedLine.strokeWidth = 0.75;
+    this.dashedLine.dashArray = [1, 2];
+    this.dashedLine.strokeColor = new paper.Color("black");
+  }
+
+  private removeDashedLine(): void {
+    this.dashedLine?.remove();
   }
 
   public onMouseDown(event: paper.ToolEvent): void {
@@ -41,9 +56,9 @@ export class ExternalWallsBuilderTool extends PaperTool {
     this.processCursorPosition(event.point);
   }
 
-  private processCursorPosition(point: InstanceType<typeof Point>) {
+  private processCursorPosition(point: paper.Point) {
     if (this.startVector === null) {
-      this.startVector = point;
+      this.startVector = point.round();
     }
     if (
       this.startVector!.getDistance(point) >
@@ -52,7 +67,45 @@ export class ExternalWallsBuilderTool extends PaperTool {
       this.currentVector = this.restrictVectorAngle(
         point.subtract(this.startVector!),
         this.wallsAngleRestrictFactor
-      ).add(this.startVector!);
+      )
+        .add(this.startVector!)
+        .round();
+      const nearPoint = this.walls.getCornerNear(
+        paperPointToPoint(point),
+        ExternalWallsBuilderTool.dragDistance
+      );
+      if (nearPoint !== null) {
+        this.currentVector = pointToPaperPoint(nearPoint);
+      }
+      const cornerOnX = this.walls.getCornerOnX(
+        this.currentVector,
+        ExternalWallsBuilderTool.dragDistance
+      );
+      const cornerOnY = this.walls.getCornerOnY(
+        this.currentVector,
+        ExternalWallsBuilderTool.dragDistance
+      );
+      let clean = true;
+      if (
+        cornerOnX !== null &&
+        !isEqual(cornerOnX, paperPointToPoint(this.startVector))
+      ) {
+        clean = false;
+        this.currentVector.y = cornerOnX.y;
+        this.drawDashedLine(this.currentVector, pointToPaperPoint(cornerOnX));
+      }
+      if (
+        cornerOnY !== null &&
+        !isEqual(cornerOnY, paperPointToPoint(this.startVector))
+      ) {
+        clean = false;
+        this.currentVector.x = cornerOnY.x;
+        this.drawDashedLine(this.currentVector, pointToPaperPoint(cornerOnY));
+      }
+      if (clean) {
+        this.removeDashedLine();
+      }
+
       this.drawLine(this.startVector!, this.currentVector);
     }
   }
@@ -84,13 +137,15 @@ export class ExternalWallsBuilderTool extends PaperTool {
 
   public onMouseUp(_event: paper.ToolEvent) {
     if (this.walls.isEmpty()) {
-      this.walls.addCorner(this.startVector!);
+      this.walls.addCorner(pointToPaperPoint(this.startVector!));
     }
-    this.walls.addCorner(this.currentVector!);
+    this.walls.addCorner(pointToPaperPoint(this.currentVector!));
     // Memorize previous point
     this.previousVector = this.startVector;
     this.startVector = this.currentVector;
-    if (this.dragVector !== null) this.dragVector.remove();
+    if (this.dragLine !== null) this.dragLine?.remove();
+    this.removeDashedLine();
+    // this.dashedDragLineGroup = new paper.Group([]);
   }
 
   public onKeyDown(event: any): void {

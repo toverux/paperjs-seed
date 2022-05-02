@@ -11,6 +11,34 @@ export class PaperWalls implements Walls {
     this.corners.strokeWidth = 10;
     this.corners.selected = true;
   }
+  public getCornerOnX(point: Point, radius: number = 0): Point | null {
+    let onX =
+      this.corners.segments.find((s: paper.Segment) => {
+        return Math.abs(s.point.y - point.y) <= radius;
+      })?.point ?? null;
+    if (onX === null || onX.x === point.x) {
+      return null;
+    }
+    return paperPointToPoint(onX);
+  }
+  public getCornerOnY(point: Point, radius: number = 0): Point | null {
+    let onY =
+      this.corners.segments.find((s: paper.Segment) => {
+        return Math.abs(s.point.x - point.x) <= radius;
+      })?.point ?? null;
+    if (onY === null || onY.y === point.y) {
+      return null;
+    }
+    return paperPointToPoint(onY);
+  }
+  public getCornerNear(point: Point, radius: number): Point | null {
+    let paperPoint = pointToPaperPoint(point);
+    let nearest =
+      this.corners.segments.find((s: paper.Segment) => {
+        return s.point.getDistance(paperPoint) <= radius;
+      })?.point ?? null;
+    return nearest === null ? null : paperPointToPoint(nearest);
+  }
 
   public getCorners(): Point[] {
     return this.corners.segments.map((s: paper.Segment) =>
@@ -23,11 +51,7 @@ export class PaperWalls implements Walls {
   }
 
   public addCorner(point: Point): void {
-    //TODO: check if there is already a point on the same axis (x or y) and delete it if it's inside
-    // this.externalWalls.closePath();
-    // let closestPoints = this.walls.
     this.corners.add(pointToPaperPoint(point));
-    this.corners = this.corners.reduce([]);
   }
 
   public removeLastCorner(): void {
