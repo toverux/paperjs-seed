@@ -16,7 +16,7 @@ export class PaperWalls implements Walls {
       this.corners.segments.find((s: paper.Segment) => {
         return Math.abs(s.point.y - point.y) <= radius;
       })?.point ?? null;
-    if (onX === null || onX.x === point.x) {
+    if (onX === null) {
       return null;
     }
     return paperPointToPoint(onX);
@@ -26,7 +26,7 @@ export class PaperWalls implements Walls {
       this.corners.segments.find((s: paper.Segment) => {
         return Math.abs(s.point.x - point.x) <= radius;
       })?.point ?? null;
-    if (onY === null || onY.y === point.y) {
+    if (onY === null) {
       return null;
     }
     return paperPointToPoint(onY);
